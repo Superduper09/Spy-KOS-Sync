@@ -2527,12 +2527,16 @@ function Spy:HandleKOSSyncMessage(message, sender, distribution)
 	end
 
 	if msgType == "ADD" then
-		-- KOSR|ADD|EnemyName|Timestamp|ReasonKey|ReasonText
+		-- KOSR|ADD|EnemyName|Timestamp|ReasonKey|ReasonText|Class|Level|Race|Guild
 		local enemyName = Spy:UnescapeSyncString(parts[3])
 		local timestamp = tonumber(parts[4]) or time()
 		local reasonKey = Spy:UnescapeSyncString(parts[5])
 		local reasonText = Spy:UnescapeSyncString(parts[6])
-		Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText)
+		local class = Spy:UnescapeSyncString(parts[7])
+		local level = tonumber(parts[8]) or 0
+		local race = Spy:UnescapeSyncString(parts[9])
+		local guild = Spy:UnescapeSyncString(parts[10])
+		Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, class, level, race, guild)
 	elseif msgType == "RSN" then
 		-- KOSR|RSN|EnemyName|ReasonKey|ReasonText|Timestamp
 		local enemyName = Spy:UnescapeSyncString(parts[3])
@@ -2585,22 +2589,59 @@ function Spy:HandleKOSSyncMessage(message, sender, distribution)
 end
 
 -- Receive KOS Add from guild
-function Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText)
+function Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, class, level, race, guild)
 	if not enemyName or enemyName == "" then return end
+
+	if Spy.db.profile.KOSSyncDebug then
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r ReceiveKOSAdd: enemy="..tostring(enemyName).." from="..tostring(sender).." class="..tostring(class).." level="..tostring(level))
+	end
 
 	-- Create player data if doesn't exist
 	local playerData = SpyPerCharDB.PlayerData[enemyName]
 	if not playerData then
-		playerData = Spy:AddPlayerData(enemyName, nil, nil, nil, nil, true, true)
+		if Spy.db.profile.KOSSyncDebug then
+			DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r Creating new PlayerData for "..enemyName)
+		end
+		playerData = Spy:AddPlayerData(enemyName, class, level, race, guild, true, true)
+		-- Set time field so SpyStats can display it (AddPlayerData doesn't set time)
+		playerData.time = timestamp or time()
+	else
+		-- Update existing player data if synced data is more complete
+		if class and class ~= "" and not playerData.class then
+			playerData.class = class
+		end
+		if level and level > 0 and (not playerData.level or playerData.level == 0) then
+			playerData.level = level
+		end
+		if race and race ~= "" and not playerData.race then
+			playerData.race = race
+		end
+		if guild and guild ~= "" and not playerData.guild then
+			playerData.guild = guild
+		end
+	end
+	-- Ensure time field exists even for existing players
+	if not playerData.time then
+		playerData.time = timestamp or time()
 	end
 
 	-- Add to KOSData if not already there
 	if not SpyPerCharDB.KOSData[enemyName] then
+		if Spy.db.profile.KOSSyncDebug then
+			DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r Adding "..enemyName.." to KOSData with timestamp "..tostring(timestamp))
+		end
 		SpyPerCharDB.KOSData[enemyName] = timestamp
+	else
+		if Spy.db.profile.KOSSyncDebug then
+			DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r "..enemyName.." already in KOSData")
+		end
 	end
 
 	-- Set kos flag so it shows in Stats window KOS filter
 	playerData.kos = 1
+	if Spy.db.profile.KOSSyncDebug then
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r Set playerData.kos=1 for "..enemyName..", KOSData["..enemyName.."]="..tostring(SpyPerCharDB.KOSData[enemyName]))
+	end
 
 	-- Track who added this player to KOS
 	if not playerData.kosAddedBy then
@@ -2657,6 +2698,25 @@ function Spy:ReceiveKOSReason(sender, enemyName, reasonKey, reasonText, timestam
 	local playerData = SpyPerCharDB.PlayerData[enemyName]
 	if not playerData then
 		playerData = Spy:AddPlayerData(enemyName, nil, nil, nil, nil, true, true)
+		playerData.time = timestamp or time()
+	end
+	-- Ensure time field exists
+	if not playerData.time then
+		playerData.time = timestamp or time()
+	end
+
+	-- If we're receiving a reason, the player should be KOS (can't have reason without KOS)
+	if not SpyPerCharDB.KOSData[enemyName] then
+		SpyPerCharDB.KOSData[enemyName] = timestamp or time()
+	end
+	playerData.kos = 1
+
+	-- Initialize kosAddedBy if needed
+	if not playerData.kosAddedBy then
+		playerData.kosAddedBy = {}
+	end
+	if not playerData.kosAddedBy[sender] then
+		playerData.kosAddedBy[sender] = timestamp or time()
 	end
 
 	if not playerData.reason then
@@ -2688,6 +2748,12 @@ function Spy:ReceiveKOSReason(sender, enemyName, reasonKey, reasonText, timestam
 				displayReason = reasonText
 			end
 			DEFAULT_CHAT_FRAME:AddMessage(L["SpySignatureColored"]..string.format(L["KOSReasonReceived"], sender, enemyName, displayReason))
+		end
+
+		-- Refresh SpyStats window if it's open
+		local SpyStats = Spy:GetModule("SpyStats", true)
+		if SpyStats and SpyStats:IsEnabled() and SpyStats:IsShown() then
+			SpyStats:Recalulate()
 		end
 	end
 end

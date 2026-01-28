@@ -231,7 +231,7 @@ function SpyStats:Refresh()
 
             line.unit = unit
 
-            local age = now - unit.time
+            local age = unit.time and (now - unit.time) or 999999
 
             local r, g, b
             if unit.kos and (age < 60) then

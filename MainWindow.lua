@@ -1084,9 +1084,9 @@ function Spy:ShowTooltip(self, show, id)
 				end
 
 				local details = ""
-				if playerData.level then details = L["Level"].." "..playerData.level.." " end
-				if playerData.race then details = details..playerData.race.." " end
-				if playerData.class then details = details..L[playerData.class] end
+				if playerData.level and playerData.level > 0 then details = L["Level"].." "..playerData.level.." " end
+				if playerData.race and playerData.race ~= "" then details = details..playerData.race.." " end
+				if playerData.class and playerData.class ~= "" then details = details..L[playerData.class] end
 				if details ~= "" then
 					GameTooltip:AddLine(details..L["Player"], detailsText.r, detailsText.g, detailsText.b)
 				end
@@ -1194,11 +1194,11 @@ function Spy:ShowMapTooltip(icon, show)
 						name = name..L["MinimapGuildText"].." <"..playerData.guild..">"
 					end
 					if Spy.db.profile.MinimapDetails then
-						if playerData.class and playerData.level then
+						if playerData.class and playerData.class ~= "" and playerData.level and playerData.level > 0 then
 							description = description..L["MinimapClassText"..playerData.class].."["..playerData.level.." "..L[playerData.class].."]"
-						elseif playerData.class then
+						elseif playerData.class and playerData.class ~= "" then
 							description = description..L["MinimapClassText"..playerData.class].."["..L[playerData.class].."]"
-						elseif playerData.level then
+						elseif playerData.level and playerData.level > 0 then
 							description = description.."["..playerData.level.."]"
 						end
 					end
