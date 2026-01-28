@@ -597,12 +597,14 @@ function Spy:ShowGuildDetailsPopup(unit)
             table.insert(statsList, {name = Spy.CharacterName.." |cff00ff00(You)|r", wins = yourWins, losses = yourLosses, lastUpdate = playerData.time or 0, isYou = true})
         end
 
-        -- Add guild members' stats
+        -- Add guild members' stats (skip yourself, already added above)
         if hasGuildStats then
             for guildMember, stats in pairs(playerData.guildStats) do
-                table.insert(statsList, {name = guildMember, wins = stats.wins or 0, losses = stats.losses or 0, lastUpdate = stats.lastUpdate or 0})
-                guildTotalWins = guildTotalWins + (stats.wins or 0)
-                guildTotalLosses = guildTotalLosses + (stats.losses or 0)
+                if guildMember ~= Spy.CharacterName then
+                    table.insert(statsList, {name = guildMember, wins = stats.wins or 0, losses = stats.losses or 0, lastUpdate = stats.lastUpdate or 0})
+                    guildTotalWins = guildTotalWins + (stats.wins or 0)
+                    guildTotalLosses = guildTotalLosses + (stats.losses or 0)
+                end
             end
         end
 
