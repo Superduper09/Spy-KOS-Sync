@@ -1,13 +1,19 @@
 **Spy - KOS Sync Edition**
 
-## Installation from GitHub
+## Installation
 
-1. Download ZIP from GitHub (Code → Download ZIP)
-2. Extract the folder
-3. **IMPORTANT: Rename the folder to just `Spy`**
-   - Remove `-KOS-Sync-main` or `-KOS-Sync-dev` from the folder name
-4. Place the `Spy` folder in: `World of Warcraft/_classic_/Interface/AddOns/`
-5. Restart WoW or `/reload`
+### Option 1: Download Release (Recommended)
+1. Go to [Releases](https://github.com/Superduper09/Spy-KOS-Sync/releases)
+2. Download `Spy.zip` from the latest release
+3. Extract to `World of Warcraft/_classic_/Interface/AddOns/`
+4. Restart WoW or `/reload`
+
+### Option 2: Git Clone
+```
+cd "World of Warcraft/_classic_/Interface/AddOns"
+git clone https://github.com/Superduper09/Spy-KOS-Sync.git Spy
+```
+To update: `cd Spy && git pull`
 
 ---
 
