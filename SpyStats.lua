@@ -15,6 +15,7 @@ local TAB_PLAYER = 1
 local VIEW_PLAYER_HISTORY = 1
 local COLOR_NORMAL = {1, 1, 1}
 local COLOR_KOS = {1, 0, 0}
+local COLOR_SAME_FACTION = {0, 1, 0}
 
 GUI.ListFrameLines = {
     [VIEW_PLAYER_HISTORY] = {},
@@ -236,6 +237,8 @@ function SpyStats:Refresh()
             local r, g, b
             if unit.kos and (age < 60) then
                 r, g, b = unpack(COLOR_KOS)
+            elseif unit.faction and unit.faction == Spy.FactionName then
+                r, g, b = unpack(COLOR_SAME_FACTION)
             else
                 r, g, b = unpack(COLOR_NORMAL)
             end
@@ -394,8 +397,8 @@ function CreateStatsDropdown(node)
 			info.hasArrow = false
 			info.disabled = nil
 			info.text = L["RemoveFromStatsList"]
-			info.func = function() 
-				Spy:RemovePlayerData(unit.name)
+			info.func = function()
+				Spy:RemovePlayerDataFromStats(unit.name)
 				SpyStats:Recalulate()
 			end 
 			info.value = nil

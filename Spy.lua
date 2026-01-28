@@ -1340,6 +1340,22 @@ Spy.optionsSlash = {
 			end,
 			dialogHidden = true
 		},
+		sanc = {
+			name = L["Sanctuary"],
+			desc = L["SanctuaryDescription"],
+			type = 'execute',
+			order = 13,
+			func = function()
+				Spy.db.profile.EnabledInSanctuaries = not Spy.db.profile.EnabledInSanctuaries
+				Spy:ZoneChangedEvent()
+				if Spy.db.profile.EnabledInSanctuaries then
+					DEFAULT_CHAT_FRAME:AddMessage(L["SpySignatureColored"]..L["SanctuaryEnabled"])
+				else
+					DEFAULT_CHAT_FRAME:AddMessage(L["SpySignatureColored"]..L["SanctuaryDisabled"])
+				end
+			end,
+			dialogHidden = true
+		},
 	},
 }
 
@@ -1479,6 +1495,7 @@ local Default_Profile = {
 		EnableSound=true,
 		OnlySoundKoS=false, 
 		StopAlertsOnTaxi=true,
+		EnabledInSanctuaries=false,
 		RemoveUndetected="OneMinute",
 		ShowNearbyList=true,
 		PrioritiseKoS=true,
@@ -1501,15 +1518,14 @@ local Default_Profile = {
 			["The Salty Sailor Tavern"] = false,
 			["Shattrath City"] = false,
 			["Area 52"] = false,
---			["Dalaran"] = false,
---			["Dalaran (Northrend)"] = false,
---			["Bogpaddle"] = false,
---			["The Vindicaar"] = false,
---			["Krasus' Landing"] = false,
---			["The Violet Gate"] = false,
---			["Magni's Encampment"] = false,
---			["Rustbolt"] = false,
---			["Oribos"] = false,
+			["Dalaran"] = false,
+			["Bogpaddle"] = false,
+			["The Vindicaar"] = false,
+			["Krasus' Landing"] = false,
+			["The Violet Gate"] = false,
+			["Magni's Encampment"] = false,
+			["Cenarion Hold"] = false,
+			["Silithus"] = false,
 		},
 	},
 }
@@ -2339,7 +2355,11 @@ timestamp, event, hideCaster, srcGUID, srcName, srcFlags, sourceRaidFlags, dstGU
 		if event == "SPELL_SUMMON" and srcName == Spy.CharacterName then
 			local petGUID = dstGUID
 			Spy.PetGUID[petGUID] = time()
-		end		
+		end
+		if event == "ENVIRONMENTAL_DAMAGE" and dstGUID == UnitGUID("player") then
+			-- Clear LastAttack so environmental deaths don't count as losses to enemy players
+			Spy.LastAttack = nil
+		end
 	end
 end
 

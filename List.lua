@@ -356,6 +356,17 @@ function Spy:UpdatePlayerStatus(name, class, level, race, guild, isEnemy, isGues
 end
 
 function Spy:RemovePlayerData(name)
+	local playerData = SpyPerCharDB.PlayerData[name]
+	if playerData then
+		if (playerData.loses == nil) and (playerData.wins == nil) then
+			SpyPerCharDB.PlayerData[name] = nil
+		else
+			playerData.isEnemy = false
+		end
+	end
+end
+
+function Spy:RemovePlayerDataFromStats(name)
 	SpyPerCharDB.PlayerData[name] = nil
 end
 
