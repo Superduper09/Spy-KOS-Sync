@@ -1,5 +1,15 @@
 **Spy - KOS Sync Edition**
 
+Fork of [Spy (TBC/Classic)](https://www.curseforge.com/wow/addons/spy-tbc) with guild KOS synchronization:
+- **Real-time KOS sync** - Add/remove KOS players syncs instantly to guild
+- **Reason attribution** - Track who added each KOS player and why
+- **Guild PvP stats** - See guildmates' wins/losses vs KOS players
+- **Guild Details popup** - Left-click any KOS player in Stats window
+
+See [CHANGELOG_KOS_SYNC.md](CHANGELOG_KOS_SYNC.md) for full details.
+
+---
+
 ## Installation
 
 ### Option 1: Download Release (Recommended)
