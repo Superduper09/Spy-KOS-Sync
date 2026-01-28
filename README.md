@@ -1,5 +1,18 @@
+**Spy - KOS Sync Edition**
+
+## Installation from GitHub
+
+1. Download ZIP from GitHub (Code → Download ZIP)
+2. Extract the folder
+3. **IMPORTANT: Rename the folder to just `Spy`**
+   - Remove `-KOS-Sync-main` or `-KOS-Sync-dev` from the folder name
+4. Place the `Spy` folder in: `World of Warcraft/_classic_/Interface/AddOns/`
+5. Restart WoW or `/reload`
+
+---
+
 **Spy**
-The Spy addon scans for enemy players and announces their presence when they are detected. 
+The Spy addon scans for enemy players and announces their presence when they are detected.
 
 **Description**
 The Spy addon scans the combat log for actions performed by enemy players and announces their presence when they are detected. By warning you about nearby enemy players you can prepare for possible PvP combat. If an enemy player is detected Spy will attempt to determine their class, race and level based on the ability that was used. It will then sound an alert and add the enemy player to the Nearby List. Spy can be configured to announce enemy player encounters and share data with other Spy users in your party, raid or guild. 

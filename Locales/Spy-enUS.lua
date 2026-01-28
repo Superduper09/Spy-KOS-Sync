@@ -38,7 +38,7 @@ The Statistics Window contains a list of all enemy encounters which can be sorte
 If enabled, this button will be located on the enemy players target frame. Clicking on this button will add/remove the enemy target to/from the Kill On Sight list. Right clicking on the button will allow you to enter Kill on Sight reasons.
 
 |cffffd000 Author:|cffffffff Slipjack
-|cffffd000 KOS Sync Version:|cffffffff 1.0.12
+|cffffd000 KOS Sync Version:|cffffffff 1.0.13
 
 Ethan is a Noob
 ]]

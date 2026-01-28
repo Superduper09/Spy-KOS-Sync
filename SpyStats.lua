@@ -251,11 +251,11 @@ function SpyStats:Refresh()
 
                 local class = GUI.ListFrameFields[view][row]["Class"]
 				local classtext = unit.class
-				if classtext then
+				if classtext and classtext ~= "" then
 					classtext = (L[classtext])
 				else
 					classtext = "?"
-				end	
+				end
                 class:SetText(classtext)
                 class:SetTextColor(r, g, b)
 

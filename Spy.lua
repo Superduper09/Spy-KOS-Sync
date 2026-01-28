@@ -2527,7 +2527,7 @@ function Spy:HandleKOSSyncMessage(message, sender, distribution)
 	end
 
 	if msgType == "ADD" then
-		-- KOSR|ADD|EnemyName|Timestamp|ReasonKey|ReasonText|Class|Level|Race|Guild
+		-- KOSR|ADD|EnemyName|Timestamp|ReasonKey|ReasonText|Class|Level|Race|Guild|Zone
 		local enemyName = Spy:UnescapeSyncString(parts[3])
 		local timestamp = tonumber(parts[4]) or time()
 		local reasonKey = Spy:UnescapeSyncString(parts[5])
@@ -2536,7 +2536,8 @@ function Spy:HandleKOSSyncMessage(message, sender, distribution)
 		local level = tonumber(parts[8]) or 0
 		local race = Spy:UnescapeSyncString(parts[9])
 		local guild = Spy:UnescapeSyncString(parts[10])
-		Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, class, level, race, guild)
+		local zone = Spy:UnescapeSyncString(parts[11])
+		Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, class, level, race, guild, zone)
 	elseif msgType == "RSN" then
 		-- KOSR|RSN|EnemyName|ReasonKey|ReasonText|Timestamp
 		local enemyName = Spy:UnescapeSyncString(parts[3])
@@ -2589,11 +2590,11 @@ function Spy:HandleKOSSyncMessage(message, sender, distribution)
 end
 
 -- Receive KOS Add from guild
-function Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, class, level, race, guild)
+function Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, class, level, race, guild, zone)
 	if not enemyName or enemyName == "" then return end
 
 	if Spy.db.profile.KOSSyncDebug then
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r ReceiveKOSAdd: enemy="..tostring(enemyName).." from="..tostring(sender).." class="..tostring(class).." level="..tostring(level))
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r ReceiveKOSAdd: enemy="..tostring(enemyName).." from="..tostring(sender).." class="..tostring(class).." level="..tostring(level).." zone="..tostring(zone))
 	end
 
 	-- Create player data if doesn't exist
@@ -2605,6 +2606,10 @@ function Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, 
 		playerData = Spy:AddPlayerData(enemyName, class, level, race, guild, true, true)
 		-- Set time field so SpyStats can display it (AddPlayerData doesn't set time)
 		playerData.time = timestamp or time()
+		-- Set zone if provided
+		if zone and zone ~= "" then
+			playerData.zone = zone
+		end
 	else
 		-- Update existing player data if synced data is more complete
 		if class and class ~= "" and not playerData.class then
@@ -2618,6 +2623,9 @@ function Spy:ReceiveKOSAdd(sender, enemyName, timestamp, reasonKey, reasonText, 
 		end
 		if guild and guild ~= "" and not playerData.guild then
 			playerData.guild = guild
+		end
+		if zone and zone ~= "" and not playerData.zone then
+			playerData.zone = zone
 		end
 	end
 	-- Ensure time field exists even for existing players

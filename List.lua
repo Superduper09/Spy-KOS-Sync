@@ -402,9 +402,10 @@ function Spy:BroadcastKOSAdd(name, timestamp, reasonKey, reasonText)
 	local level = playerData and playerData.level or 0
 	local race = playerData and playerData.race or ""
 	local guild = playerData and playerData.guild or ""
+	local zone = playerData and playerData.zone or ""
 
 	if Spy.db.profile.KOSSyncDebug then
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r BroadcastKOSAdd: name="..tostring(name).." class="..tostring(class).." level="..tostring(level).." race="..tostring(race).." guild="..tostring(guild))
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r BroadcastKOSAdd: name="..tostring(name).." class="..tostring(class).." level="..tostring(level).." guild="..tostring(guild).." zone="..tostring(zone))
 		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r playerData exists: "..tostring(playerData ~= nil))
 	end
 
@@ -414,8 +415,9 @@ function Spy:BroadcastKOSAdd(name, timestamp, reasonKey, reasonText)
 	local escapedClass = Spy:EscapeSyncString(class)
 	local escapedRace = Spy:EscapeSyncString(race)
 	local escapedGuild = Spy:EscapeSyncString(guild)
-	-- Format: KOSR|ADD|Name|Timestamp|ReasonKey|ReasonText|Class|Level|Race|Guild
-	local message = "KOSR|ADD|"..escapedName.."|"..(timestamp or time()).."|"..escapedKey.."|"..escapedText.."|"..escapedClass.."|"..(level or 0).."|"..escapedRace.."|"..escapedGuild
+	local escapedZone = Spy:EscapeSyncString(zone)
+	-- Format: KOSR|ADD|Name|Timestamp|ReasonKey|ReasonText|Class|Level|Race|Guild|Zone
+	local message = "KOSR|ADD|"..escapedName.."|"..(timestamp or time()).."|"..escapedKey.."|"..escapedText.."|"..escapedClass.."|"..(level or 0).."|"..escapedRace.."|"..escapedGuild.."|"..escapedZone
 	if Spy.db.profile.KOSSyncDebug then
 		DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r Sending message: "..message)
 	end
