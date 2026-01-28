@@ -38,7 +38,7 @@ The Statistics Window contains a list of all enemy encounters which can be sorte
 If enabled, this button will be located on the enemy players target frame. Clicking on this button will add/remove the enemy target to/from the Kill On Sight list. Right clicking on the button will allow you to enter Kill on Sight reasons.
 
 |cffffd000 Author:|cffffffff Slipjack
-|cffffd000 KOS Sync Version:|cffffffff 1.0.13
+|cffffd000 KOS Sync Version:|cffffffff 1.0.14
 
 Ethan is a Noob
 ]]
@@ -470,7 +470,8 @@ StaticPopupDialogs["Spy_SetKOSReasonOther"] = {
 	end,
 	EditBoxOnEnterPressed = function(self)
 		local parent = self:GetParent()
-		local reason = parent.editBox:GetText()
+		local editBox = parent.editBox or parent.EditBox or _G[parent:GetName().."EditBox"]
+		local reason = editBox and editBox:GetText() or ""
 		local playerName = parent.data
 		if playerName then
 			Spy:SetKOSReason(playerName, "Enter your own reason...", reason)
