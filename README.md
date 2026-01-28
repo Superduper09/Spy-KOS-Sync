@@ -15,12 +15,12 @@ See [CHANGELOG_KOS_SYNC.md](CHANGELOG_KOS_SYNC.md) for full details.
 ### Option 1: Download Release (Recommended)
 1. Go to [Releases](https://github.com/Superduper09/Spy-KOS-Sync/releases)
 2. Download `Spy.zip` from the latest release
-3. Extract to `World of Warcraft/_classic_/Interface/AddOns/`
+3. Extract to `World of Warcraft/_anniversary_/Interface/AddOns/`
 4. Restart WoW or `/reload`
 
 ### Option 2: Git Clone
 ```
-cd "World of Warcraft/_classic_/Interface/AddOns"
+cd "World of Warcraft/_anniversary_/Interface/AddOns"
 git clone https://github.com/Superduper09/Spy-KOS-Sync.git Spy
 ```
 To update: `cd Spy && git pull`
