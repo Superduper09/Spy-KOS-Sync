@@ -1,0 +1,10 @@
+# Ignore backup files
+*.bak
+*~
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore any local config/test files
+*.local
