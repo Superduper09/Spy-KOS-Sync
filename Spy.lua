@@ -1566,6 +1566,18 @@ function Spy:CheckDatabase()
 	if SpyDB.removeKOSData == nil then SpyDB.removeKOSData = {} end
 	if SpyDB.removeKOSData[Spy.RealmName] == nil then SpyDB.removeKOSData[Spy.RealmName] = {} end
 	if SpyDB.removeKOSData[Spy.RealmName][Spy.FactionName] == nil then SpyDB.removeKOSData[Spy.RealmName][Spy.FactionName] = {} end
+	-- Generate unique AccountID for this account (shared across all characters via SpyDB)
+	if SpyDB.AccountID == nil then
+		-- Generate a unique ID using time and random numbers
+		SpyDB.AccountID = string.format("%x%x%x", time(), math.random(0, 0xFFFF), math.random(0, 0xFFFF))
+	end
+	Spy.AccountID = SpyDB.AccountID
+	-- Initialize account-wide PvP stats (shared across all characters on this account)
+	if SpyDB.AccountStats == nil then SpyDB.AccountStats = {} end
+	if SpyDB.AccountStats[Spy.RealmName] == nil then SpyDB.AccountStats[Spy.RealmName] = {} end
+	if SpyDB.AccountStats[Spy.RealmName][Spy.FactionName] == nil then SpyDB.AccountStats[Spy.RealmName][Spy.FactionName] = {} end
+	-- Migrate old AccountStats format (combined) to new format (per-character)
+	Spy:MigrateAccountStats()
 --[[	if Spy.db.profile == nil then Spy.db.profile = Default_Profile.profile end
 	if Spy.db.profile.Colors == nil then Spy.db.profile.Colors = Default_Profile.profile.Colors end
 	if Spy.db.profile.Colors["Window"] == nil then Spy.db.profile.Colors["Window"] = Default_Profile.profile.Colors["Window"] end
@@ -1741,6 +1753,31 @@ function Spy:MigrateKOSReasons()
 		end
 	end
 	SpyPerCharDB.KOSReasonsMigrated = true
+end
+
+-- Migrate old AccountStats format (combined {wins,losses}) to new format (per-character)
+function Spy:MigrateAccountStats()
+	local accountStats = SpyDB.AccountStats[Spy.RealmName] and SpyDB.AccountStats[Spy.RealmName][Spy.FactionName]
+	if not accountStats then return end
+
+	for enemyName, stats in pairs(accountStats) do
+		-- Check if this is old format (has wins/losses keys directly, not character names)
+		if stats.wins ~= nil or stats.losses ~= nil then
+			-- Old format detected - convert to new format under current character
+			local oldWins = stats.wins or 0
+			local oldLosses = stats.losses or 0
+			local oldLastUpdate = stats.lastUpdate or time()
+
+			-- Clear old format and create new format
+			accountStats[enemyName] = {
+				[Spy.CharacterName] = {
+					wins = oldWins,
+					losses = oldLosses,
+					lastUpdate = oldLastUpdate
+				}
+			}
+		end
+	end
 end
 
 function Spy:ResetProfile()
@@ -2313,7 +2350,9 @@ timestamp, event, hideCaster, srcGUID, srcName, srcFlags, sourceRaidFlags, dstGU
 						playerData.wins = 0
 					end
 					playerData.wins = playerData.wins + 1
-					-- Broadcast PvP update if this is a KOS player
+					-- Update account-wide stats (for your own cross-alt tracking)
+					Spy:UpdateAccountStats(dstName, 1, 0)
+					-- Broadcast PvP update if this is a KOS player (per-character stats)
 					if SpyPerCharDB.KOSData[dstName] then
 						Spy:BroadcastKOSPvPUpdate(dstName, "WIN", playerData.wins, playerData.loses or 0)
 					end
@@ -2342,9 +2381,11 @@ timestamp, event, hideCaster, srcGUID, srcName, srcFlags, sourceRaidFlags, dstGU
 					if playerData then
 						if not playerData.wins then playerData.wins = 0 end
 							playerData.wins = playerData.wins + 1
+							-- Update account-wide stats (for your own cross-alt tracking)
+							Spy:UpdateAccountStats(dstName, 1, 0)
 --							PlaySoundFile("Interface\\AddOns\\Spy\\Sounds\\neck-snap.mp3", Spy.db.profile.SoundChannel)
 --							DEFAULT_CHAT_FRAME:AddMessage("Your pet/guardian killed " .. dstName);
-							-- Broadcast PvP update if this is a KOS player
+							-- Broadcast PvP update if this is a KOS player (per-character stats)
 							if SpyPerCharDB.KOSData[dstName] then
 								Spy:BroadcastKOSPvPUpdate(dstName, "WIN", playerData.wins, playerData.loses or 0)
 							end
@@ -2376,7 +2417,9 @@ function Spy:PlayerDeadEvent()
 				playerData.loses = 0
 			end
 			playerData.loses = playerData.loses + 1
-			-- Broadcast PvP update if this is a KOS player
+			-- Update account-wide stats (for your own cross-alt tracking)
+			Spy:UpdateAccountStats(Spy.LastAttack, 0, 1)
+			-- Broadcast PvP update if this is a KOS player (per-character stats)
 			if SpyPerCharDB.KOSData[Spy.LastAttack] then
 				Spy:BroadcastKOSPvPUpdate(Spy.LastAttack, "LOSS", playerData.wins or 0, playerData.loses)
 			end
@@ -2589,13 +2632,14 @@ function Spy:HandleKOSSyncMessage(message, sender, distribution)
 		local data = parts[3]
 		Spy:ProcessKOSSyncData(sender, data)
 	elseif msgType == "PVP" then
-		-- KOSR|PVP|EnemyName|WIN/LOSS|Wins|Losses|Timestamp
+		-- KOSR|PVP|EnemyName|WIN/LOSS|Wins|Losses|Timestamp|AccountID
 		local enemyName = Spy:UnescapeSyncString(parts[3])
 		local result = parts[4]
 		local wins = tonumber(parts[5]) or 0
 		local losses = tonumber(parts[6]) or 0
 		local timestamp = tonumber(parts[7]) or time()
-		Spy:ReceiveKOSPvPUpdate(sender, enemyName, result, wins, losses, timestamp)
+		local accountId = parts[8] or nil
+		Spy:ReceiveKOSPvPUpdate(sender, enemyName, result, wins, losses, timestamp, accountId)
 	end
 end
 
@@ -2802,7 +2846,7 @@ function Spy:ReceiveKOSRemoval(sender, enemyName, timestamp)
 end
 
 -- Receive PvP update from guild
-function Spy:ReceiveKOSPvPUpdate(sender, enemyName, result, wins, losses, timestamp)
+function Spy:ReceiveKOSPvPUpdate(sender, enemyName, result, wins, losses, timestamp, accountId)
 	if not enemyName or enemyName == "" then return end
 
 	local playerData = SpyPerCharDB.PlayerData[enemyName]
@@ -2819,8 +2863,12 @@ function Spy:ReceiveKOSPvPUpdate(sender, enemyName, result, wins, losses, timest
 		playerData.guildStats[sender] = {
 			wins = wins,
 			losses = losses,
-			lastUpdate = timestamp
+			lastUpdate = timestamp,
+			accountId = accountId
 		}
+	elseif accountId and not playerData.guildStats[sender].accountId then
+		-- Update accountId if we didn't have it before
+		playerData.guildStats[sender].accountId = accountId
 	end
 
 	-- Show notification
@@ -3063,7 +3111,8 @@ function Spy:SerializeKOSSyncData(data)
 		if entry.guildStats then
 			for guildMember, stats in pairs(entry.guildStats) do
 				local escapedMember = Spy:EscapeSyncString(guildMember)
-				local statsStr = "G~"..escapedMember.."~"..(stats.wins or 0).."~"..(stats.losses or 0).."~"..(stats.lastUpdate or 0)
+				local accountId = stats.accountId or ""
+				local statsStr = "G~"..escapedMember.."~"..(stats.wins or 0).."~"..(stats.losses or 0).."~"..(stats.lastUpdate or 0).."~"..accountId
 				entryStr = entryStr..";"..statsStr
 			end
 		end
@@ -3083,9 +3132,10 @@ function Spy:SerializeKOSSyncData(data)
 			local playerStr = "P~"..escapedClass.."~"..(entry.level or 0).."~"..escapedRace.."~"..escapedGuild.."~"..(entry.lastSeen or 0)
 			entryStr = entryStr..";"..playerStr
 		end
-		-- Serialize sender's personal wins/loses (prefixed with W~): W~wins~loses
+		-- Serialize sender's personal wins/loses (prefixed with W~): W~wins~loses~accountId
 		if entry.senderWins or entry.senderLoses then
-			local wlStr = "W~"..(entry.senderWins or 0).."~"..(entry.senderLoses or 0)
+			local accountId = Spy.AccountID or ""
+			local wlStr = "W~"..(entry.senderWins or 0).."~"..(entry.senderLoses or 0).."~"..accountId
 			entryStr = entryStr..";"..wlStr
 		end
 		table.insert(parts, entryStr)
@@ -3198,11 +3248,13 @@ function Spy:ProcessKOSSyncData(sender, data)
 						end
 					end
 				elseif dataType == "G" then
-					-- Guild stats data: G~guildMember~wins~losses~lastUpdate
+					-- Guild stats data: G~guildMember~wins~losses~lastUpdate~accountId
 					local guildMember = Spy:UnescapeSyncString(dataParts[2])
 					local wins = tonumber(dataParts[3]) or 0
 					local losses = tonumber(dataParts[4]) or 0
 					local lastUpdate = tonumber(dataParts[5]) or 0
+					local accountId = dataParts[6]
+					if accountId == "" then accountId = nil end
 
 					if guildMember and guildMember ~= "" then
 						local existingStats = playerData.guildStats[guildMember]
@@ -3210,8 +3262,12 @@ function Spy:ProcessKOSSyncData(sender, data)
 							playerData.guildStats[guildMember] = {
 								wins = wins,
 								losses = losses,
-								lastUpdate = lastUpdate
+								lastUpdate = lastUpdate,
+								accountId = accountId
 							}
+						elseif accountId and not existingStats.accountId then
+							-- Update accountId if we didn't have it before
+							existingStats.accountId = accountId
 						end
 					end
 				elseif dataType == "A" then
@@ -3251,9 +3307,11 @@ function Spy:ProcessKOSSyncData(sender, data)
 						playerData.time = syncLastSeen
 					end
 				elseif dataType == "W" then
-					-- Sender's wins/loses: W~wins~loses - store in guildStats under sender's name
+					-- Sender's wins/loses: W~wins~loses~accountId - store in guildStats under sender's name
 					local senderWins = tonumber(dataParts[2]) or 0
 					local senderLoses = tonumber(dataParts[3]) or 0
+					local senderAccountId = dataParts[4]
+					if senderAccountId == "" then senderAccountId = nil end
 					if senderWins > 0 or senderLoses > 0 then
 						if not playerData.guildStats then
 							playerData.guildStats = {}
@@ -3264,8 +3322,12 @@ function Spy:ProcessKOSSyncData(sender, data)
 							playerData.guildStats[sender] = {
 								wins = senderWins,
 								losses = senderLoses,
-								lastUpdate = time()
+								lastUpdate = time(),
+								accountId = senderAccountId
 							}
+						elseif senderAccountId and not existingStats.accountId then
+							-- Update accountId if we didn't have it before
+							existingStats.accountId = senderAccountId
 						end
 					end
 				else
@@ -3339,6 +3401,48 @@ function Spy:ProcessKOSSyncData(sender, data)
 	end
 end
 
+-- Get account-wide PvP stats for an enemy
+-- Get combined account-wide PvP stats for an enemy (sum of all your characters)
+function Spy:GetAccountStats(enemyName)
+	local accountStats = SpyDB.AccountStats[Spy.RealmName][Spy.FactionName][enemyName]
+	if accountStats then
+		local totalWins, totalLosses = 0, 0
+		for charName, stats in pairs(accountStats) do
+			totalWins = totalWins + (stats.wins or 0)
+			totalLosses = totalLosses + (stats.losses or 0)
+		end
+		return totalWins, totalLosses
+	end
+	return 0, 0
+end
+
+-- Get per-character breakdown of account stats for an enemy
+function Spy:GetAccountStatsBreakdown(enemyName)
+	return SpyDB.AccountStats[Spy.RealmName][Spy.FactionName][enemyName]
+end
+
+-- Update account-wide PvP stats for an enemy (stores per-character)
+function Spy:UpdateAccountStats(enemyName, winsToAdd, lossesToAdd)
+	local enemyStats = SpyDB.AccountStats[Spy.RealmName][Spy.FactionName][enemyName]
+	if not enemyStats then
+		enemyStats = {}
+		SpyDB.AccountStats[Spy.RealmName][Spy.FactionName][enemyName] = enemyStats
+	end
+	local charName = Spy.CharacterName
+	if not enemyStats[charName] then
+		enemyStats[charName] = { wins = 0, losses = 0 }
+	end
+	if winsToAdd and winsToAdd > 0 then
+		enemyStats[charName].wins = (enemyStats[charName].wins or 0) + winsToAdd
+	end
+	if lossesToAdd and lossesToAdd > 0 then
+		enemyStats[charName].losses = (enemyStats[charName].losses or 0) + lossesToAdd
+	end
+	enemyStats[charName].lastUpdate = time()
+	-- Return totals for backward compatibility
+	return Spy:GetAccountStats(enemyName)
+end
+
 -- Broadcast PvP update to guild for KOS players
 function Spy:BroadcastKOSPvPUpdate(enemyName, result, wins, losses)
 	if not Spy.db.profile.ShareKOSReasons then return end
@@ -3346,7 +3450,8 @@ function Spy:BroadcastKOSPvPUpdate(enemyName, result, wins, losses)
 
 	local timestamp = time()
 	local escapedName = Spy:EscapeSyncString(enemyName)
-	local message = "KOSR|PVP|"..escapedName.."|"..result.."|"..(wins or 0).."|"..(losses or 0).."|"..timestamp
+	local accountId = Spy.AccountID or ""
+	local message = "KOSR|PVP|"..escapedName.."|"..result.."|"..(wins or 0).."|"..(losses or 0).."|"..timestamp.."|"..accountId
 	Spy:SendCommMessage(Spy.Signature, message, "GUILD")
 end
 

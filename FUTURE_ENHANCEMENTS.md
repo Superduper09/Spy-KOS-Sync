@@ -161,3 +161,80 @@ SpyPerCharDB.PlayerData["PlayerName"] = {
 **Priority**: Medium-High - Unique feature, high reuse of existing sync code
 
 ---
+
+## 4. "Added By" Column in Statistics Window
+
+**Feature**: Show who added each KOS player directly in the Statistics window as a sortable column.
+
+**Current Behavior**:
+- "Added By" info only visible in Guild Details popup (left-click on KOS player)
+- Users must click each entry individually to see attribution
+
+**Proposed UI**:
+- New column "Added By" in Statistics list header
+- Shows first adder (earliest timestamp) or most recent adder
+- Sortable like other columns (Name, Level, Guild, Wins, Losses)
+- Truncate long names with "..." if needed
+
+**Data Source**:
+```lua
+playerData.kosAddedBy = {
+    ["GuildMember1"] = 1706000000,  -- timestamp
+    ["GuildMember2"] = 1706100000,
+}
+-- Display: Show member with earliest timestamp (original adder)
+```
+
+**Files to Modify**:
+- `SpyStats.lua` - Add column header, row display, sort function
+- `SpyStats.xml` - Column width adjustments
+- `Locales/Spy-enUS.lua` - "Added By" header string
+
+**Priority**: Low - Nice to have, info already available via popup
+
+---
+
+## 5. Statistics Window Column Customization
+
+**Feature**: Allow users to show/hide columns in the Statistics window based on preference.
+
+**Columns to Toggle**:
+- Name (always shown)
+- Level
+- Class
+- Race
+- Guild
+- Wins
+- Losses
+- W/L (combined wins-losses)
+- Added By (if implemented)
+- Last Seen
+
+**UI Implementation**:
+- Right-click on column header → dropdown menu with checkboxes
+- Or: Settings panel with column toggle checkboxes
+- Save preferences in Spy.db.profile
+
+**Settings Structure**:
+```lua
+Spy.db.profile.StatsColumns = {
+    showLevel = true,
+    showClass = true,
+    showRace = false,  -- hidden by default
+    showGuild = true,
+    showWins = true,
+    showLosses = true,
+    showAddedBy = false,
+    showLastSeen = true,
+}
+```
+
+**Files to Modify**:
+- `SpyStats.lua` - Dynamic column rendering
+- `SpyStats.xml` - Flexible column widths
+- `Spy.lua` - Default settings
+- `Locales/Spy-enUS.lua` - Setting labels
+
+**Priority**: Low - Power user feature
+
+---

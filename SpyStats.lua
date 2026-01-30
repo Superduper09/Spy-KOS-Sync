@@ -585,30 +585,116 @@ function Spy:ShowGuildDetailsPopup(unit)
 
     -- Section: Guild PvP Record
     table.insert(lines, "|cffffd200"..L["StatsDetailGuildPvP"].."|r")
-    local yourWins = playerData and playerData.wins or 0
-    local yourLosses = playerData and playerData.loses or 0
+
+    -- Get your per-character stats breakdown
+    local yourStatsBreakdown = Spy:GetAccountStatsBreakdown(unit.name)
+    local yourTotalWins, yourTotalLosses = Spy:GetAccountStats(unit.name)
+    -- Fallback to per-character stats if account stats not available
+    if yourTotalWins == 0 and yourTotalLosses == 0 then
+        yourTotalWins = playerData and playerData.wins or 0
+        yourTotalLosses = playerData and playerData.loses or 0
+    end
+
     local hasGuildStats = playerData and playerData.guildStats and next(playerData.guildStats)
-    local hasAnyStats = hasGuildStats or yourWins > 0 or yourLosses > 0
+    local hasYourStats = yourTotalWins > 0 or yourTotalLosses > 0
+    local hasAnyStats = hasGuildStats or hasYourStats
 
     if hasAnyStats then
-        local guildTotalWins = yourWins
-        local guildTotalLosses = yourLosses
         local statsList = {}
+        local myAccountId = Spy.AccountID
 
-        -- Add your own stats to the list (marked with "You")
-        if yourWins > 0 or yourLosses > 0 then
-            table.insert(statsList, {name = Spy.CharacterName.." |cff00ff00(You)|r", wins = yourWins, losses = yourLosses, lastUpdate = playerData.time or 0, isYou = true})
-        end
+        -- Track accounts for total calculation (avoid double-counting)
+        local accountTotals = {}  -- accountId -> {wins, losses}
 
-        -- Add guild members' stats (skip yourself, already added above)
-        if hasGuildStats then
-            for guildMember, stats in pairs(playerData.guildStats) do
-                if guildMember ~= Spy.CharacterName then
-                    table.insert(statsList, {name = guildMember, wins = stats.wins or 0, losses = stats.losses or 0, lastUpdate = stats.lastUpdate or 0})
-                    guildTotalWins = guildTotalWins + (stats.wins or 0)
-                    guildTotalLosses = guildTotalLosses + (stats.losses or 0)
+        -- Add your own characters individually
+        if yourStatsBreakdown then
+            for charName, stats in pairs(yourStatsBreakdown) do
+                local wins = stats.wins or 0
+                local losses = stats.losses or 0
+                if wins > 0 or losses > 0 then
+                    local displayName = charName
+                    if charName == Spy.CharacterName then
+                        displayName = charName.." |cff00ff00(You)|r"
+                    else
+                        displayName = charName.." |cff00ff00(Your alt)|r"
+                    end
+                    table.insert(statsList, {
+                        name = displayName,
+                        wins = wins,
+                        losses = losses,
+                        lastUpdate = stats.lastUpdate or 0,
+                        isYou = true,
+                        accountId = myAccountId
+                    })
                 end
             end
+            if myAccountId then
+                accountTotals[myAccountId] = {wins = yourTotalWins, losses = yourTotalLosses}
+            end
+        elseif hasYourStats then
+            -- Fallback: no breakdown available, show current char only
+            table.insert(statsList, {
+                name = Spy.CharacterName.." |cff00ff00(You)|r",
+                wins = yourTotalWins,
+                losses = yourTotalLosses,
+                lastUpdate = playerData and playerData.time or 0,
+                isYou = true,
+                accountId = myAccountId
+            })
+            if myAccountId then
+                accountTotals[myAccountId] = {wins = yourTotalWins, losses = yourTotalLosses}
+            end
+        end
+
+        -- Add guild members' stats (show each character individually)
+        if hasGuildStats then
+            for guildMember, stats in pairs(playerData.guildStats) do
+                local wins = stats.wins or 0
+                local losses = stats.losses or 0
+                local lastUpdate = stats.lastUpdate or 0
+                local accId = stats.accountId
+
+                -- Skip if this is your own alt (already added from AccountStats)
+                local isYourAlt = accId and accId == myAccountId
+                if not isYourAlt and (wins > 0 or losses > 0) then
+                    -- Add to display list
+                    local displayName = guildMember
+                        -- Mark if this char shares account with another listed char
+                        if accId and accountTotals[accId] then
+                            displayName = guildMember.." |cff888888(alt)|r"
+                        end
+
+                        table.insert(statsList, {
+                            name = displayName,
+                            wins = wins,
+                            losses = losses,
+                            lastUpdate = lastUpdate,
+                            accountId = accId
+                        })
+
+                        -- Track for total calculation (ADD individual stats per account)
+                        if accId and accId ~= "" then
+                            if not accountTotals[accId] then
+                                accountTotals[accId] = {wins = 0, losses = 0}
+                            end
+                            -- Add this character's individual stats to the account total
+                            accountTotals[accId].wins = accountTotals[accId].wins + wins
+                            accountTotals[accId].losses = accountTotals[accId].losses + losses
+                        else
+                            -- No accountId, count separately
+                            local uniqueKey = "noAcct_"..guildMember
+                            accountTotals[uniqueKey] = {wins = wins, losses = losses}
+                        end
+                end
+            end
+        end
+
+        -- Calculate guild total from account totals (no double-counting)
+        local guildTotalWins = 0
+        local guildTotalLosses = 0
+        for _, totals in pairs(accountTotals) do
+            guildTotalWins = guildTotalWins + totals.wins
+            guildTotalLosses = guildTotalLosses + totals.losses
         end
 
         table.sort(statsList, function(a, b) return (a.wins - a.losses) > (b.wins - b.losses) end)

@@ -1092,20 +1092,56 @@ function Spy:ShowTooltip(self, show, id)
 				end
 
 				if Spy.db.profile.DisplayWinLossStatistics then
-					local wins = playerData.wins or 0
-					local loses = playerData.loses or 0
-					GameTooltip:AddLine(L["StatsWins"]..wins..L["StatsSeparator"]..L["StatsLoses"]..loses, detailsText.r, detailsText.g, detailsText.b)
-					-- Show guild total stats (including your own stats)
-					local guildWins = wins
-					local guildLosses = loses
+					-- Show per-character stats for your alts
+					local yourStatsBreakdown = Spy:GetAccountStatsBreakdown(name)
+					local yourTotalWins, yourTotalLosses = 0, 0
+					if yourStatsBreakdown then
+						local charList = {}
+						for charName, stats in pairs(yourStatsBreakdown) do
+							local w = stats.wins or 0
+							local l = stats.losses or 0
+							if w > 0 or l > 0 then
+								table.insert(charList, {name = charName, wins = w, losses = l})
+								yourTotalWins = yourTotalWins + w
+								yourTotalLosses = yourTotalLosses + l
+							end
+						end
+						if #charList > 0 then
+							GameTooltip:AddLine(L["TooltipYourRecord"] or "Your Record:", detailsText.r, detailsText.g, detailsText.b)
+							for _, entry in ipairs(charList) do
+								local label = entry.name
+								if entry.name == Spy.CharacterName then
+									label = entry.name.." |cff00ff00(You)|r"
+								end
+								GameTooltip:AddLine("  "..label..": |cff40ff00"..entry.wins.."|r-|cff0070dd"..entry.losses.."|r", detailsText.r, detailsText.g, detailsText.b)
+							end
+						end
+					end
+					-- Fallback to current char stats if no breakdown available
+					if yourTotalWins == 0 and yourTotalLosses == 0 then
+						local wins = playerData.wins or 0
+						local loses = playerData.loses or 0
+						if wins > 0 or loses > 0 then
+							GameTooltip:AddLine(L["StatsWins"]..wins..L["StatsSeparator"]..L["StatsLoses"]..loses, detailsText.r, detailsText.g, detailsText.b)
+						end
+						yourTotalWins = wins
+						yourTotalLosses = loses
+					end
+					-- Show guild total stats
+					local guildWins = yourTotalWins
+					local guildLosses = yourTotalLosses
 					if playerData.guildStats then
-						for _, stats in pairs(playerData.guildStats) do
-							guildWins = guildWins + (stats.wins or 0)
-							guildLosses = guildLosses + (stats.losses or 0)
+						for guildMember, stats in pairs(playerData.guildStats) do
+							-- Skip your own alts (already counted above)
+							local isYourAlt = stats.accountId and stats.accountId == Spy.AccountID
+							if not isYourAlt then
+								guildWins = guildWins + (stats.wins or 0)
+								guildLosses = guildLosses + (stats.losses or 0)
+							end
 						end
 					end
 					if guildWins > 0 or guildLosses > 0 then
-						GameTooltip:AddLine(L["StatsGuildWL"]..": |cff40ff00"..guildWins.."|r / |cff0070dd"..guildLosses.."|r", detailsText.r, detailsText.g, detailsText.b)
+						GameTooltip:AddLine(L["StatsGuildWL"]..": |cff40ff00"..guildWins.."|r-|cff0070dd"..guildLosses.."|r", detailsText.r, detailsText.g, detailsText.b)
 					end
 				end
 

@@ -1,5 +1,28 @@
 # Spy Addon - KOS Sync Feature Changelog
 
+## Version 1.0.17 - Per-Character Stats Tracking
+
+### Changes
+- **Per-character stats tracking** - Each of your alts' kills/deaths tracked separately
+- **Individual character display** - ALL characters (yours and guildies) shown individually
+- **AccountID system** - Each account generates a unique ID to identify alts
+- **No duplication** - Guild totals sum individual contributions without double-counting
+
+### How It Works Now
+- **Your characters**: Each shown individually (e.g., "Alt A (You): 2-0", "Alt B (Your alt): 1-1")
+- **Guild member characters**: Each shown individually (e.g., "Walrus: 2-0", "WalrusAlt (alt): 1-1")
+- **Guild Total**: Sum of all individual contributions, grouped by account to prevent double-counting
+
+### Technical Details
+- `SpyDB.AccountID` - Unique hex string per account, shared across all characters
+- `SpyDB.AccountStats[realm][faction][enemy][charName]` - Per-character PvP stats
+- `GetAccountStatsBreakdown(enemy)` - Returns per-character stats table
+- `GetAccountStats(enemy)` - Returns combined total (sum of all your chars)
+- PvP broadcasts include AccountID for alt identification
+- Each character broadcasts their individual stats only
+
+---
+
 ## Overview
 
 This update adds a comprehensive **Kill On Sight (KOS) synchronization system** that allows guild members to share KOS data including reasons, attribution (who added whom), and PvP statistics.
