@@ -2587,17 +2587,7 @@ function Spy:HandleKOSSyncMessage(message, sender, distribution)
 	elseif msgType == "RSP" then
 		-- KOSR|RSP|SerializedData
 		local data = parts[3]
-		-- Check when we last synced with this sender BEFORE processing (which updates the time)
-		local lastSyncWithSender = (SpyPerCharDB.KOSSyncTimes and SpyPerCharDB.KOSSyncTimes[sender]) or 0
 		Spy:ProcessKOSSyncData(sender, data)
-		-- Send our data back to them if we haven't recently (makes sync bidirectional)
-		-- The time check prevents infinite loops: after we send RSP back, they receive it and
-		-- their KOSSyncTimes[us] will be recent, so they won't send another RSP back
-		if time() - lastSyncWithSender > 30 then
-			Spy:ScheduleTimer(function()
-				Spy:SendKOSSyncResponse(sender, lastSyncWithSender)
-			end, 2)
-		end
 	elseif msgType == "PVP" then
 		-- KOSR|PVP|EnemyName|WIN/LOSS|Wins|Losses|Timestamp
 		local enemyName = Spy:UnescapeSyncString(parts[3])
@@ -3033,9 +3023,9 @@ function Spy:SendKOSSyncResponse(target, sinceTime)
 			-- Send in chunks with delay
 			Spy:SendKOSSyncChunks(syncData)
 		end
-		-- Show notification
-		if Spy.db.profile.KOSSyncNotifications then
-			DEFAULT_CHAT_FRAME:AddMessage(L["SpySignatureColored"]..string.format(L["KOSSyncSentTo"], target, #syncData))
+		-- Show notification (debug only - reduces spam when responding to others' requests)
+		if Spy.db.profile.KOSSyncDebug then
+			DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[KOS Sync Debug]|r "..string.format(L["KOSSyncSentTo"], target, #syncData))
 		end
 	end
 
