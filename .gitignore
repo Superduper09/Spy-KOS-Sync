@@ -8,3 +8,7 @@ Thumbs.db
 
 # Ignore any local config/test files
 *.local
+
+# Ignore local build artifacts and accidental redirect files
+Spy.zip
+nul

@@ -1,0 +1,7 @@
+# Files excluded from release zips (git archive)
+.gitattributes export-ignore
+.gitignore export-ignore
+.github export-ignore
+.claude export-ignore
+*.md export-ignore
+Spy.zip export-ignore

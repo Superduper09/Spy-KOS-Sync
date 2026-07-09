@@ -62,6 +62,19 @@ Localization files in `Locales/` directory (enUS, deDE, esES, esMX, frFR, itIT, 
 - UI elements use WoW frame API with BackdropTemplate
 - Color/font registration via `Spy.Colors:Register*` methods
 
+### Release Process
+
+Publishing a GitHub release automatically triggers `.github/workflows/release.yml`, which builds `Spy.zip` and attaches it to the release. The zip contains a top-level `Spy/` folder so users can extract it directly into their AddOns directory without renaming. Files excluded from the zip (docs, git files, `.github`, `.claude`) are controlled by `export-ignore` rules in `.gitattributes`.
+
+To build the zip manually if ever needed:
+
+```
+git archive --format=zip --prefix=Spy/ -o Spy.zip <tag>
+gh release upload <tag> Spy.zip --clobber
+```
+
+Never upload a hand-made zip — after publishing a release, verify the `Spy.zip` asset is attached.
+
 ### Slash Commands
 
 - `/spy` - Show command list
